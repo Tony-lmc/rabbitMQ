@@ -1,9 +1,7 @@
-package rabbitmq4;
+package rabbitmq.test5;
 
 import java.io.IOException;
 import java.util.Scanner;
-
-import javax.security.auth.callback.Callback;
 
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.CancelCallback;
@@ -13,12 +11,7 @@ import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.DeliverCallback;
 import com.rabbitmq.client.Delivery;
 
-/**
- * 路由模式消费者
- * @author lmc
- *
- */
-public class Test2 {
+public class Tset2 {
 	public static void main(String[] args) throws Exception {
 		ConnectionFactory f = new ConnectionFactory();
 		f.setHost("192.168.145.132");
@@ -29,17 +22,18 @@ public class Test2 {
 		Channel ch = c.createChannel();
 		
 		//创建交换机		交换机名称			交换机类型
-		ch.exchangeDeclare("direct_logs", BuiltinExchangeType.DIRECT);
+		ch.exchangeDeclare("topic_logs", BuiltinExchangeType.TOPIC);
 		
-		//消费者自动生成队列名，
-		String queueName = ch.queueDeclare().getQueue();
-		System.out.println("输入接收日志的级别，用空格隔开：");
-		String[] a = new Scanner(System.in).nextLine().split("\\s");
+		//自动生成队列  获取队列名字
+		String queuename = ch.queueDeclare().getQueue();
 		
-		//把队列绑定到direct_logs上，可以绑定多个bindingkey
-		for (String level : a) {
-			ch.queueBind(queueName, "direct_logs", level);
-		} 
+		System.out.println("请输入bindingkey，并用空格隔开");
+		String[] bindingKeys = new Scanner(System.in).nextLine().split("\\s");
+		//human:tom tony   animals:dog cat      other:knief
+		for (String bindingKey : bindingKeys) {
+			ch.queueBind(queuename, "topic_logs", bindingKey);
+		}
+		
 		System.out.println("等待接收数据");
 		
 		DeliverCallback callback = new DeliverCallback() {
@@ -47,14 +41,15 @@ public class Test2 {
 			public void handle(String consumerTag, Delivery message) throws IOException {
 				String msg = new String(message.getBody());
 				String routingKey = message.getEnvelope().getRoutingKey();
-				System.out.println("收到："+routingKey+" - "+msg);
-			}
-		};
-		CancelCallback cancel = new CancelCallback() {
-			public void handle(String consumerTag) throws IOException {
+				System.out.println("收到："+routingKey+"-"+msg);
 			}
 		};
 		
-		ch.basicConsume(queueName, true, callback,cancel);
+		CancelCallback cancel = new CancelCallback() {
+			@Override
+			public void handle(String consumerTag) throws IOException {
+			}
+		};
+		ch.basicConsume(queuename, true, callback, cancel);
 	}
 }
